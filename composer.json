@@ -16,5 +16,6 @@
     ],
     "type": "wordpress-muplugin",
     "require": {
+      "chrisboulton/php-resque": "dev-master"
     }
 }

@@ -52,6 +52,8 @@ class Rooftop_Queue_Pusher_Admin {
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
 
+        $this->redis_key = 'site_id:'.get_current_blog_id().':webhooks';
+        $this->redis = new Predis\Client();
 	}
 
 	/**
@@ -100,4 +102,81 @@ class Rooftop_Queue_Pusher_Admin {
 
 	}
 
+    /**
+     * @param $post_id
+     *
+     * post was saved - check the status and trigger a webhook request
+     */
+    function trigger_webhook_save($post_id) {
+        $post = get_post($post_id);
+
+        if(in_array($post->post_status, array('auto-draft', 'draft', 'inherit')) && $post->post_date == $post->post_modified) {
+            return;
+        }
+
+        $webhook_request_body = array(
+            'id' => $post_id,
+            'type' => $post->post_type,
+            'status' => $post->post_status
+        );
+
+        $this->send_webhook_request($webhook_request_body);
+    }
+
+    /**
+     * @param $post_id
+     *
+     * post was deleted
+     */
+    function trigger_webhook_delete($post_id) {
+//        $post = get_post($post_id);
+//
+//        if(in_array($post->post_status, array('revision', 'inherit')) && $post->post_date == $post->post_modified) {
+//            return;
+//        }
+//
+//        $webhook_request_body = array(
+//            'id' => $post_id,
+//            'status' => 'deleted'
+//        );
+//
+//        $this->send_webhook_request($webhook_request_body);
+    }
+
+    /**
+     * @param $request_body
+     *
+     * fetch all of the webhook endpoints out of redis and post the given request_body to it
+     */
+    function send_webhook_request($request_body) {
+        foreach($this->get_webhook_endpoints() as $endpoint) {
+            $args = array('endpoint' => $endpoint, 'body' => $request_body);
+
+            $args = apply_filters( 'prepare_webhook_payload', $args ); // filters to apply to all content types
+            $args = apply_filters( 'prepare_'.$request_body['type'].'_webhook_payload', $args ); // content type specific filter (eg. 'prepare_event_webhook_payload')
+
+            Resque::enqueue('default', 'PostSaved', $args);
+        }
+    }
+
+    /**
+     * @param null $environment
+     * @return array|mixed|object
+     *
+     * Fetch the webhook endpoints from redis and decode form json
+     */
+    private function get_webhook_endpoints($environment=null) {
+        $endpoints = json_decode($this->redis->get($this->redis_key));
+        if(!is_array($endpoints)) {
+            return array();
+        }
+
+        if($environment){
+            $endpoints = array_filter($endpoints, function($e) use($environment) {
+                return $e->environment == $environment;
+            });
+        }
+
+        return $endpoints;
+    }
 }

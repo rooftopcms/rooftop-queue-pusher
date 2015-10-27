@@ -119,6 +119,11 @@ class Rooftop_Queue_Pusher {
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-rooftop-queue-pusher-public.php';
 
+        $path = plugin_dir_path( dirname( __FILE__ ) ) . 'jobs/*.php';
+        foreach(glob($path) as $file) {
+            include $file;
+        }
+
 		$this->loader = new Rooftop_Queue_Pusher_Loader();
 
 	}
@@ -155,6 +160,8 @@ class Rooftop_Queue_Pusher {
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
 
+        $this->loader->add_action( 'save_post', $plugin_admin, 'trigger_webhook_save' );
+        $this->loader->add_action( 'delete_post', $plugin_admin, 'trigger_webhook_delete' );
 	}
 
 	/**
