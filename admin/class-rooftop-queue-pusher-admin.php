@@ -55,7 +55,7 @@ class Rooftop_Queue_Pusher_Admin {
         $this->redis_key = 'site_id:'.get_current_blog_id().':webhooks';
         $this->redis = new Predis\Client();
 
-        Resque_Event::listen('afterPerform', array(RooftopJob, 'afterPerform'));
+        Resque_Event::listen('afterPerform', array('RooftopJob', 'afterPerform'));
 	}
 
 	/**
