@@ -54,6 +54,8 @@ class Rooftop_Queue_Pusher_Admin {
 
         $this->redis_key = 'site_id:'.get_current_blog_id().':webhooks';
         $this->redis = new Predis\Client();
+
+        Resque_Event::listen('afterPerform', array(RooftopJob, 'afterPerform'));
 	}
 
 	/**
@@ -102,6 +104,39 @@ class Rooftop_Queue_Pusher_Admin {
 
 	}
 
+    function add_job_status_table($blog_id) {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . "${blog_id}_completed_jobs";
+
+        if($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+            $sql = <<<EOSQL
+CREATE TABLE $table_name (
+    id MEDIUMINT NOT NULL AUTO_INCREMENT,
+    job_class VARCHAR(256) NOT NULL,
+    status INTEGER NOT NULL,
+    message VARCHAR(256),
+    payload VARCHAR(256) NOT NULL,
+    user_id INTEGER NOT NULL,
+    PRIMARY KEY(id)
+)
+EOSQL;
+
+            dbDelta($sql);
+        }
+    }
+    function remove_job_status_table($blog_id) {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . "completed_jobs";
+        $sql = <<<EOSQL
+DROP TABLE $table_name;
+EOSQL;
+
+        $wpdb->query($sql);
+    }
+
+
     /**
      * @param $post_id
      *
@@ -129,18 +164,18 @@ class Rooftop_Queue_Pusher_Admin {
      * post was deleted
      */
     function trigger_webhook_delete($post_id) {
-//        $post = get_post($post_id);
-//
-//        if(in_array($post->post_status, array('revision', 'inherit')) && $post->post_date == $post->post_modified) {
-//            return;
-//        }
-//
-//        $webhook_request_body = array(
-//            'id' => $post_id,
-//            'status' => 'deleted'
-//        );
-//
-//        $this->send_webhook_request($webhook_request_body);
+        $post = get_post($post_id);
+
+        if(in_array($post->post_status, array('revision')) && $post->post_date == $post->post_modified) {
+            return;
+        }
+
+        $webhook_request_body = array(
+            'id' => $post_id,
+            'status' => 'deleted'
+        );
+
+        $this->send_webhook_request($webhook_request_body);
     }
 
     /**
@@ -150,12 +185,12 @@ class Rooftop_Queue_Pusher_Admin {
      */
     function send_webhook_request($request_body) {
         foreach($this->get_webhook_endpoints() as $endpoint) {
-            $args = array('endpoint' => $endpoint, 'body' => $request_body);
+            $request_body = apply_filters( 'prepare_webhook_payload', $request_body ); // filters to apply to all content types
+            $request_body = apply_filters( 'prepare_'.$request_body['type'].'_webhook_payload', $request_body ); // content type specific filter (eg. 'prepare_event_webhook_payload')
 
-            $args = apply_filters( 'prepare_webhook_payload', $args ); // filters to apply to all content types
-            $args = apply_filters( 'prepare_'.$request_body['type'].'_webhook_payload', $args ); // content type specific filter (eg. 'prepare_event_webhook_payload')
+            $args = array( 'endpoint' => $endpoint, 'body' => $request_body );
 
-            Resque::enqueue('default', 'PostSaved', $args);
+            Resque::enqueue('content', 'PostSaved', $args);
         }
     }
 

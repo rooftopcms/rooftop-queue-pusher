@@ -160,6 +160,9 @@ class Rooftop_Queue_Pusher {
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
 
+        $this->loader->add_action( 'wpmu_new_blog', $plugin_admin, 'add_job_status_table', 20 );
+        $this->loader->add_action( 'delete_blog', $plugin_admin, 'remove_job_status_table', 20 );
+
         $this->loader->add_action( 'save_post', $plugin_admin, 'trigger_webhook_save' );
         $this->loader->add_action( 'delete_post', $plugin_admin, 'trigger_webhook_delete' );
 	}

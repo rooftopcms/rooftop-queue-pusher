@@ -1,14 +1,14 @@
 <?php
-class PostSaved {
-    function __construct() {
-        $f = 1;
-    }
+require_once('rooftop_job.php');
+
+class PostSaved extends RooftopJob {
     public function setUp() {
     }
     public function tearDown() {
     }
 
     public function perform() {
+        echo "\n\nPerforming job...";
         $url = $this->args['endpoint']['url'];
         $body = $this->args['body'];
 
@@ -19,24 +19,11 @@ class PostSaved {
         curl_exec($ch);
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-        // if we don't have success with response, or success with no response - requeue this message
-        if(!in_array($status, array(200, 204))){
-            // if this task is ok to retry, push it back onto a 'retry' queue
-            // else this task has failed too many times
+        // if we don't have success with response, or success with no response - re-queue this message
+        $attempts = array_key_exists('attempts', $body) ? $body['attempts']+=1 : 1;
 
-            error_log("Request failed - status $status");
-//            $attempts = array_key_exists('attempts', $body) ? $body['attempts']+=1 : 1;
-//            $delay_in_minutes = $attempts*$attempts*$attempts;
-//
-//            if($attempts<3) {
-//                $body['attempts'] = $attempts;
-//                $this->args['body'] = $body;
-//                error_log("\n\nRetrying in $delay_in_minutes minutes\n\n");
-//                Resque::later(new \DateTime("+$delay_in_minutes mins"), 'PostSaved', $this->args, 'retry');
-//            }else {
-//                error_log("\n\nnot retrying\n\n");
-//            }
-        }
+        echo "\nStatus: $status \n";
+        echo "Attempts: $attempts \n";
     }
 }
 ?>
