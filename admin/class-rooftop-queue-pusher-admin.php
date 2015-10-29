@@ -55,6 +55,12 @@ class Rooftop_Queue_Pusher_Admin {
         $this->redis_key = 'site_id:'.get_current_blog_id().':webhooks';
         $this->redis = new Predis\Client();
 
+        $this->blog_id = get_current_blog_id();
+        $details = get_blog_details($this->blog_id, 'domain', false);
+        $domain = $details->domain;
+        $sub_domain = explode(".", $domain)[0];
+        $this->sub_domain = $sub_domain;
+
         Resque_Event::listen('afterPerform', array('RooftopJob', 'afterPerform'));
 	}
 
@@ -113,6 +119,7 @@ class Rooftop_Queue_Pusher_Admin {
             $sql = <<<EOSQL
 CREATE TABLE $table_name (
     id MEDIUMINT NOT NULL AUTO_INCREMENT,
+    rooftop_job_id VARCHAR(256) NOT NULL,
     job_class VARCHAR(256) NOT NULL,
     status INTEGER NOT NULL,
     message VARCHAR(256),
@@ -137,6 +144,21 @@ EOSQL;
     }
 
 
+    private function create_job_status_row($rooftop_job_id, $job_class, $status, $message, $payload, $user_id) {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . "completed_jobs";
+
+        $payload = json_encode($payload);
+
+        $sql = <<<EOSQL
+INSERT INTO $table_name (rooftop_job_id, job_class, status, message, payload, user_id)
+VALUES ('$rooftop_job_id', '$job_class', $status, '$message', '$payload', $user_id)
+EOSQL;
+        $wpdb->query($sql);
+    }
+
+
     /**
      * @param $post_id
      *
@@ -151,6 +173,8 @@ EOSQL;
 
         $webhook_request_body = array(
             'id' => $post_id,
+            'blog_id' => $this->blog_id,
+            'sub_domain' => $this->sub_domain,
             'type' => $post->post_type,
             'status' => $post->post_status
         );
@@ -172,6 +196,9 @@ EOSQL;
 
         $webhook_request_body = array(
             'id' => $post_id,
+            'type' => $post->post_type,
+            'blog_id' => $this->blog_id,
+            'sub_domain' => $this->sub_domain,
             'status' => 'deleted'
         );
 
@@ -188,10 +215,29 @@ EOSQL;
             $request_body = apply_filters( 'prepare_webhook_payload', $request_body ); // filters to apply to all content types
             $request_body = apply_filters( 'prepare_'.$request_body['type'].'_webhook_payload', $request_body ); // content type specific filter (eg. 'prepare_event_webhook_payload')
 
-            $args = array( 'endpoint' => $endpoint, 'body' => $request_body );
+            $rooftop_job_id = md5(uniqid('', true));
+            $args = array( 'rooftop_job_id' => $rooftop_job_id, 'endpoint' => $endpoint, 'body' => $request_body );
 
-            Resque::enqueue('content', 'PostSaved', $args);
+            Resque::enqueue('content', 'PostSaved', $args, true);
+
+            // add a new job status row - we'll amend the status of this when the job has completed
+            $this->create_job_status_row($rooftop_job_id, 'PostSaved', Resque_Job_Status::STATUS_WAITING, "", $args, get_current_user_id());
         }
+    }
+
+    /**
+     * render a table of all the webhooks that have been called
+     */
+    public function get_webhook_details() {
+        global $wpdb;
+
+        $blog_id = get_current_blog_id();
+        $table_name = $wpdb->prefix . "completed_jobs";
+
+        $sql = "SELECT * FROM $table_name ORDER BY id DESC LIMIT 50;";
+        $results = $wpdb->get_results($sql, OBJECT);
+
+        require_once plugin_dir_path( __FILE__ ) . 'partials/rooftop-queue-pusher-admin-display.php';
     }
 
     /**
