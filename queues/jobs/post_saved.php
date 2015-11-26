@@ -16,6 +16,7 @@ class PostSaved extends RooftopJob {
 
     public function perform() {
         echo "\n\nPerforming job...\n";
+        $inflector = ICanBoogie\Inflector::get('en');
 
         try {
             $payload = $this->args;
@@ -35,7 +36,7 @@ class PostSaved extends RooftopJob {
             if( 200 !== $status && $attempt < $this->retry_max ) {
                 $payload['body']['attempts'] = $attempt;
 
-                $delay = 10 * $attempt * $attempt; // retry after 1, 8, 27 minutes before giving up
+                $delay = (60 * $attempt * $attempt)*$attempt; // retry after 1, 8, 27 minutes before giving up
                 error_log("RETRY (status $status) - ". $this->retry_max . " > $attempt - retry in $delay");
 
                 ResqueScheduler::enqueueIn($delay, "content", "PostSaved", $payload);
