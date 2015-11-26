@@ -42,10 +42,11 @@ function status_label($status) {
         <tr>
             <th>Status</th>
             <th>Job type</th>
-            <th>Content</th>
+            <th>Post</th>
             <th>Message</th>
         </tr>
         </thead>
+
         <?php foreach($results as $result): ?>
             <tr>
                 <td>
@@ -60,7 +61,8 @@ function status_label($status) {
                     $type = $json->body->type;
                     $id = $json->body->id;
                     ?>
-                    <a href="/wp-admin/post.php?post=<?php echo $id;?>&action=edit">/<?php echo $type;?>/<?php echo $id; ?></a>
+
+                    <a href="/wp-admin/post.php?post=<?php echo $id;?>&action=edit" title="<?php echo preg_replace('/"/', '\'', $result->payload) ?>">/<?php echo $type;?>/<?php echo $id; ?></a>
                 </td>
                 <td>
                     <?php echo $result->message; ?>
