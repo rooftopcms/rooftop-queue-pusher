@@ -56,10 +56,13 @@ class Rooftop_Queue_Pusher_Admin {
         $this->redis = new Predis\Client();
 
         $this->blog_id = get_current_blog_id();
-        $details = get_blog_details($this->blog_id, 'domain', false);
-        $domain = $details->domain;
-        $sub_domain = explode(".", $domain)[0];
-        $this->sub_domain = $sub_domain;
+
+        if( function_exists('get_blog_details') ) {
+            $details = get_blog_details($this->blog_id, 'domain', false);
+            $domain = $details->domain;
+            $sub_domain = explode(".", $domain)[0];
+            $this->sub_domain = $sub_domain;
+        }
 
         Resque_Event::listen('afterPerform', array('RooftopJob', 'afterPerform'));
 	}
