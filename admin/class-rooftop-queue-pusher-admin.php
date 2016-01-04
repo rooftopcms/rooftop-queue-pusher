@@ -53,7 +53,11 @@ class Rooftop_Queue_Pusher_Admin {
 		$this->version = $version;
 
         $this->redis_key = 'site_id:'.get_current_blog_id().':webhooks';
-        $this->redis = new Predis\Client();
+        $this->redis = new Predis\Client( [
+            'scheme' => 'tcp',
+            'host'   => REDIS_HOST,
+            'port'   => REDIS_PORT,
+        ] );
 
         $this->blog_id = get_current_blog_id();
 
