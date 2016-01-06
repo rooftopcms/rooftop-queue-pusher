@@ -57,6 +57,7 @@ class Rooftop_Queue_Pusher_Admin {
             'scheme' => 'tcp',
             'host'   => REDIS_HOST,
             'port'   => REDIS_PORT,
+            'password' => REDIS_PASSWORD
         ] );
 
         $this->blog_id = get_current_blog_id();
@@ -67,6 +68,8 @@ class Rooftop_Queue_Pusher_Admin {
             $sub_domain = explode(".", $domain)[0];
             $this->sub_domain = $sub_domain;
         }
+
+        Resque::setBackend(REDIS_HOST.":".REDIS_PORT,REDIS_DB);
 
         Resque_Event::listen('afterPerform', array('RooftopJob', 'afterPerform'));
 	}
