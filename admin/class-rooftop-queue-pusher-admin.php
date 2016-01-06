@@ -69,6 +69,8 @@ class Rooftop_Queue_Pusher_Admin {
             $this->sub_domain = $sub_domain;
         }
 
+        Resque::setBackend(REDIS_HOST.":".REDIS_PORT,REDIS_DB);
+
         Resque_Event::listen('afterPerform', array('RooftopJob', 'afterPerform'));
 	}
 
