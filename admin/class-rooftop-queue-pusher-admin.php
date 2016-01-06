@@ -130,7 +130,7 @@ CREATE TABLE $table_name (
     job_class VARCHAR(256) NOT NULL,
     status INTEGER NOT NULL,
     message VARCHAR(256),
-    payload VARCHAR(256) NOT NULL,
+    payload TEXT NOT NULL,
     user_id INTEGER NOT NULL,
     PRIMARY KEY(id)
 )
