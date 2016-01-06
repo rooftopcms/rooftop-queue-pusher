@@ -166,6 +166,10 @@ class Rooftop_Queue_Pusher {
         $this->loader->add_action( 'save_post', $plugin_admin, 'trigger_webhook_save' );
         $this->loader->add_action( 'delete_post', $plugin_admin, 'trigger_webhook_delete' );
 
+        $this->loader->add_action( 'wp_update_nav_menu', $plugin_admin, 'trigger_menu_save', 10, 1 );
+        $this->loader->add_action( 'wp_delete_nav_menu', $plugin_admin, 'trigger_menu_delete', 10, 1 );
+        $this->loader->add_action( 'wp_update_nav_menu_item', $plugin_admin, 'trigger_menu_item_save', 10, 3 );
+
         $this->loader->add_filter( 'webhook_details_overview', $plugin_admin, 'get_webhook_details' );
 	}
 

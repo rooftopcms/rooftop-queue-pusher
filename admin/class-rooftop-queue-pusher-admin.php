@@ -22,6 +22,8 @@
  */
 class Rooftop_Queue_Pusher_Admin {
 
+    static $menu_update_hook_called = false;
+
 	/**
 	 * The ID of this plugin.
 	 *
@@ -177,7 +179,10 @@ EOSQL;
     function trigger_webhook_save($post_id) {
         $post = get_post($post_id);
 
-        if(in_array($post->post_status, array('auto-draft', 'draft', 'inherit')) && $post->post_date == $post->post_modified) {
+        /**
+         * Don't trigger the webhook request for save Menu Item's, or content that in a temporary or draft state
+         */
+        if( $post->post_type === 'nav_menu_item' || ( in_array($post->post_status, array('auto-draft', 'draft', 'inherit')) && $post->post_date == $post->post_modified ) ) {
             return;
         }
 
@@ -193,14 +198,79 @@ EOSQL;
     }
 
     /**
+     * @param $menu_id
+     *
+     * trigger a webhook for a saved menu
+     */
+    function trigger_menu_save( $menu_id ) {
+
+        // wp triggers this event (wp_update_nav_menu) twice - check the static var is false before generating the webhook
+        $updating = self::$menu_update_hook_called;
+
+        if( !$updating ) {
+            self::$menu_update_hook_called = true;
+
+            $menu = wp_get_nav_menu_object( $menu_id );
+
+            $webhook_request_body = array(
+                'id' => $menu_id,
+                'type' => 'menu',
+                'slug' => $menu->slug,
+                'name' => $menu->name,
+                'blog_id' => $this->blog_id,
+                'sub_domain' => $this->sub_domain,
+            );
+
+            $this->send_webhook_request( $webhook_request_body );
+        }
+
+    }
+
+    /**
+     * @param $menu_id
+     *
+     * fire a webhook for a deleted nav menu
+     */
+    function trigger_menu_delete( $menu_id ) {
+        $webhook_request_body = array(
+            'id' => $menu_id,
+            'type' => 'menu',
+            'blog_id' => $this->blog_id,
+            'sub_domain' => $this->sub_domain,
+            'status' => 'deleted'
+        );
+
+        $this->send_webhook_request( $webhook_request_body );
+    }
+
+    /**
+     * @param $menu_id
+     * @param $menu_item_db_id
+     * @param $menu_item_data
+     *
+     * called whenever a menu item is added or changed.
+     */
+    function trigger_menu_item_save( $menu_id, $menu_item_db_id, $menu_item_data ) {
+        /*
+         * since we don't want to trigger a webhook for a menu item when editing a menu (we'd get 1 hook
+         * per-action), we instead hook into this and check for the _status key in the request.
+         * This allows  us to trigger menu webhooks when the user adds a top-level page and they have a
+         * menu with "Automatically add new top-level pages to this menu" enabled
+         */
+        if( array_key_exists( '_status', $_REQUEST) ) {
+            $this->trigger_menu_save( $menu_id );
+        }
+    }
+
+    /**
      * @param $post_id
      *
      * post was deleted
      */
-    function trigger_webhook_delete($post_id) {
+    function trigger_webhook_delete( $post_id ) {
         $post = get_post($post_id);
 
-        if(in_array($post->post_status, array('revision')) && $post->post_date == $post->post_modified) {
+        if( $post->post_type === 'nav_menu_item' || ( in_array( $post->post_status, array('revision')) && $post->post_date == $post->post_modified ) ) {
             return;
         }
 
@@ -212,7 +282,7 @@ EOSQL;
             'status' => 'deleted'
         );
 
-        $this->send_webhook_request($webhook_request_body);
+        $this->send_webhook_request( $webhook_request_body );
     }
 
     /**
@@ -228,7 +298,7 @@ EOSQL;
             $rooftop_job_id = md5(uniqid('', true));
             $args = array( 'rooftop_job_id' => $rooftop_job_id, 'endpoint' => $endpoint, 'body' => $request_body );
 
-            Resque::enqueue('content', 'PostSaved', $args, true);
+            Resque::enqueue( 'content', 'PostSaved', $args, true );
 
             // add a new job status row - we'll amend the status of this when the job has completed
             $this->create_job_status_row($rooftop_job_id, 'PostSaved', Resque_Job_Status::STATUS_WAITING, "", $args, get_current_user_id());
