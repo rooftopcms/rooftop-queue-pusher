@@ -57,6 +57,7 @@ class Rooftop_Queue_Pusher_Admin {
             'scheme' => 'tcp',
             'host'   => REDIS_HOST,
             'port'   => REDIS_PORT,
+            'password' => REDIS_PASSWORD
         ] );
 
         $this->blog_id = get_current_blog_id();
