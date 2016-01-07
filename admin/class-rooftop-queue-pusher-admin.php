@@ -188,7 +188,7 @@ EOSQL;
 
         if( $post->post_type === 'page' && $post->post_parent == null ) {
             // check for menus that have this page as a member
-            $post_is_in_menus = $this->post_is_in_menu( $post );
+            $post_is_in_menus = $this->post_menu_ids( $post );
             if( ! empty( $post_is_in_menus ) ) {
                 foreach( $post_is_in_menus as $menu_id ) {
                     $this->trigger_menu_save( $menu_id, $force_update = true );
@@ -207,7 +207,7 @@ EOSQL;
         $this->send_webhook_request( $webhook_request_body );
     }
 
-    function post_is_in_menu( $post ) {
+    function post_menu_ids( $post ) {
         $menus = wp_get_nav_menus();
         $menu_ids = array();
 
