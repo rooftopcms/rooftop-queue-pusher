@@ -186,6 +186,16 @@ EOSQL;
             return;
         }
 
+        if( $post->post_type === 'page' && $post->post_parent == null ) {
+            // check for menus that have this page as a member
+            $post_is_in_menus = $this->post_is_in_menu( $post );
+            if( ! empty( $post_is_in_menus ) ) {
+                foreach( $post_is_in_menus as $menu_id ) {
+                    $this->trigger_menu_save( $menu_id, $force_update = true );
+                }
+            }
+        }
+
         $webhook_request_body = array(
             'id' => $post_id,
             'blog_id' => $this->blog_id,
@@ -194,7 +204,23 @@ EOSQL;
             'status' => $post->post_status
         );
 
-        $this->send_webhook_request($webhook_request_body);
+        $this->send_webhook_request( $webhook_request_body );
+    }
+
+    function post_is_in_menu( $post ) {
+        $menus = wp_get_nav_menus();
+        $menu_ids = array();
+
+        foreach( $menus as $menu ) {
+            $menu_object = wp_get_nav_menu_items( $menu->term_id );
+            $menu_item_ids = wp_list_pluck( $menu_object, 'object_id' );
+
+            if( in_array( $post->ID, $menu_item_ids ) ) {
+                $menu_ids[] = $menu->term_id;
+            }
+        }
+
+        return $menu_ids;
     }
 
     /**
@@ -202,12 +228,12 @@ EOSQL;
      *
      * trigger a webhook for a saved menu
      */
-    function trigger_menu_save( $menu_id ) {
+    function trigger_menu_save( $menu_id, $force_update = false ) {
 
         // wp triggers this event (wp_update_nav_menu) twice - check the static var is false before generating the webhook
         $updating = self::$menu_update_hook_called;
 
-        if( !$updating ) {
+        if( !$updating || $force_update ) {
             self::$menu_update_hook_called = true;
 
             $menu = wp_get_nav_menu_object( $menu_id );
