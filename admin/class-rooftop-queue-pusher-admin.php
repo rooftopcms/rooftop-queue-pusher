@@ -122,55 +122,6 @@ class Rooftop_Queue_Pusher_Admin {
 
 	}
 
-    function add_job_status_table($blog_id) {
-        global $wpdb;
-
-        $table_name = $wpdb->prefix . "${blog_id}_completed_jobs";
-
-        if($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
-            $sql = <<<EOSQL
-CREATE TABLE $table_name (
-    id MEDIUMINT NOT NULL AUTO_INCREMENT,
-    rooftop_job_id VARCHAR(256) NOT NULL,
-    job_class VARCHAR(256) NOT NULL,
-    status INTEGER NOT NULL,
-    message VARCHAR(256),
-    payload TEXT NOT NULL,
-    user_id INTEGER NOT NULL,
-    PRIMARY KEY(id)
-)
-EOSQL;
-
-            dbDelta($sql);
-        }
-    }
-    function remove_job_status_table($blog_id) {
-        global $wpdb;
-
-        $table_name = $wpdb->prefix . "completed_jobs";
-        $sql = <<<EOSQL
-DROP TABLE $table_name;
-EOSQL;
-
-        $wpdb->query($sql);
-    }
-
-
-    private function create_job_status_row($rooftop_job_id, $job_class, $status, $message, $payload, $user_id) {
-        global $wpdb;
-
-        $table_name = $wpdb->prefix . "completed_jobs";
-
-        $payload = json_encode($payload);
-
-        $sql = <<<EOSQL
-INSERT INTO $table_name (rooftop_job_id, job_class, status, message, payload, user_id)
-VALUES ('$rooftop_job_id', '$job_class', $status, '$message', '$payload', $user_id)
-EOSQL;
-        $wpdb->query($sql);
-    }
-
-
     /**
      * @param $post_id
      *
@@ -325,25 +276,7 @@ EOSQL;
             $args = array( 'rooftop_job_id' => $rooftop_job_id, 'endpoint' => $endpoint, 'body' => $request_body );
 
             Resque::enqueue( 'content', 'PostSaved', $args, true );
-
-            // add a new job status row - we'll amend the status of this when the job has completed
-            $this->create_job_status_row($rooftop_job_id, 'PostSaved', Resque_Job_Status::STATUS_WAITING, "", $args, get_current_user_id());
         }
-    }
-
-    /**
-     * render a table of all the webhooks that have been called
-     */
-    public function get_webhook_details() {
-        global $wpdb;
-
-        $blog_id = get_current_blog_id();
-        $table_name = $wpdb->prefix . "completed_jobs";
-
-        $sql = "SELECT * FROM $table_name ORDER BY id DESC LIMIT 50;";
-        $results = $wpdb->get_results($sql, OBJECT);
-
-        require_once plugin_dir_path( __FILE__ ) . 'partials/rooftop-queue-pusher-admin-display.php';
     }
 
     /**
