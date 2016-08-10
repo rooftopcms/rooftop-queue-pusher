@@ -54,7 +54,6 @@ class Rooftop_Queue_Pusher_Admin {
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
 
-        $this->redis_key = 'site_id:'.get_current_blog_id().':webhooks';
         $this->redis = new Predis\Client( [
             'scheme' => 'tcp',
             'host'   => REDIS_HOST,
@@ -280,21 +279,15 @@ class Rooftop_Queue_Pusher_Admin {
     }
 
     /**
-     * @param null $environment
      * @return array|mixed|object
      *
      * Fetch the webhook endpoints from redis and decode form json
      */
-    private function get_webhook_endpoints($environment=null) {
-        $endpoints = json_decode($this->redis->get($this->redis_key));
+    private function get_webhook_endpoints() {
+        $endpoints = get_blog_option( get_current_blog_id(), 'webhook_endpoints', array() );
+
         if(!is_array($endpoints)) {
             return array();
-        }
-
-        if($environment){
-            $endpoints = array_filter($endpoints, function($e) use($environment) {
-                return $e->environment == $environment;
-            });
         }
 
         return $endpoints;
