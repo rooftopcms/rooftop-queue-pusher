@@ -3,16 +3,17 @@ require_once(dirname(__FILE__).'/../../../../../../config/application.php');
 require_once('rooftop_job.php');
 
 class PostSaved extends RooftopJob {
+    private $retry_max = 2;
+
     function tearDown() {
     }
 
     public function perform() {
         echo "\n\nPerforming job...\n";
+        $payload = $this->args;
+        $body = $payload['body'];
 
         try {
-            $payload = $this->args;
-            $body = $payload['body'];
-
             $url = parse_url( $payload['endpoint']['url'] );
             $host = $url['host'];
             $port = array_key_exists( 'port', $url ) ? $url['port'] : 80;
@@ -28,7 +29,18 @@ class PostSaved extends RooftopJob {
             fwrite( $request_socket, $request_body );
             fclose( $request_socket );
         }catch (Exception $e) {
-            error_log("Exception raised: '" . $e->getMessage() . "'");
+            // if we don't have success with response, or success with no response - re-queue this message
+            $attempt = array_key_exists('attempts', $body) ? $body['attempts']+=1 : 1;
+
+            if( $attempt <= $this->retry_max ) {
+                $payload['body']['attempts'] = $attempt;
+                $delay = ( 60 * $attempt * $attempt ) * $attempt; // retry after 1, 8, 27 minutes before giving up
+
+                error_log("Exception raised: '" . $e->getMessage() . "' - Retrying job in {$delay}");
+                ResqueScheduler::enqueueIn( $delay, "content", "PostSaved", $payload );
+            }else {
+                error_log("Exception raised: '" . $e->getMessage() . "' - Not retrying");
+            }
         }
     }
 }
