@@ -15,8 +15,10 @@ class PostSaved extends RooftopJob {
 
         try {
             $url = parse_url( $payload['endpoint']['url'] );
-            $host = $url['host'];
-            $port = array_key_exists( 'port', $url ) ? $url['port'] : 80;
+            $host_prefix = $url['scheme'] == 'https' ? 'ssl://' : '';
+            $host = $host_prefix.$url['host'];
+            $scheme_port = $url['scheme']=='https' ? 443 : 80;
+            $port = array_key_exists( 'port', $url ) ? $url['port'] : $scheme_port;
 
             $request_socket = fsockopen( $host, $port, $errno, $errstr, 10 );
             $request_body = "POST " . $url['path'] . " HTTP/1.1\r\n";
