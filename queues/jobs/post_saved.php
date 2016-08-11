@@ -21,15 +21,19 @@ class PostSaved extends RooftopJob {
             $port = array_key_exists( 'port', $url ) ? $url['port'] : $scheme_port;
 
             $request_socket = fsockopen( $host, $port, $errno, $errstr, 10 );
-            $request_body = "POST " . $url['path'] . " HTTP/1.1\r\n";
-            $request_body.= "Host: " . $url['host'] . "\r\n";
-            $request_body.= "Content-Type: application/x-www-form-urlencoded\r\n";
-            $request_body.= "Content-Length: " . strlen( http_build_query( $body ) ) . "\r\n";
-            $request_body.= "Connection: Close\r\n\r\n";
-            $request_body.= http_build_query( $body );
+            if( $request_socket ) {
+                $request_body = "POST " . $url['path'] . " HTTP/1.1\r\n";
+                $request_body.= "Host: " . $url['host'] . "\r\n";
+                $request_body.= "Content-Type: application/x-www-form-urlencoded\r\n";
+                $request_body.= "Content-Length: " . strlen( http_build_query( $body ) ) . "\r\n";
+                $request_body.= "Connection: Close\r\n\r\n";
+                $request_body.= http_build_query( $body );
 
-            fwrite( $request_socket, $request_body );
-            fclose( $request_socket );
+                fwrite( $request_socket, $request_body );
+                fclose( $request_socket );
+            }else {
+                throw new Exception("Couldn't create socket");
+            }
         }catch (Exception $e) {
             // if we don't have success with response, or success with no response - re-queue this message
             $attempt = array_key_exists('attempts', $body) ? $body['attempts']+=1 : 1;
