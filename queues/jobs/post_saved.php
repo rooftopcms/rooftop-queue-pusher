@@ -10,30 +10,21 @@ class PostSaved extends RooftopJob {
 
     public function perform() {
         echo "\n\nPerforming job...\n";
+
         $payload = $this->args;
         $body = $payload['body'];
 
         try {
-            $url = parse_url( $payload['endpoint']['url'] );
-            $host_prefix = $url['scheme'] == 'https' ? 'ssl://' : '';
-            $host = $host_prefix.$url['host'];
-            $scheme_port = $url['scheme']=='https' ? 443 : 80;
-            $port = array_key_exists( 'port', $url ) ? $url['port'] : $scheme_port;
+            $url = $payload['endpoint']['url'];
 
-            $request_socket = fsockopen( $host, $port, $errno, $errstr, 10 );
-            if( $request_socket ) {
-                $request_body = "POST " . $url['path'] . " HTTP/1.1\r\n";
-                $request_body.= "Host: " . $url['host'] . "\r\n";
-                $request_body.= "Content-Type: application/x-www-form-urlencoded\r\n";
-                $request_body.= "Content-Length: " . strlen( http_build_query( $body ) ) . "\r\n";
-                $request_body.= "Connection: Close\r\n\r\n";
-                $request_body.= http_build_query( $body );
-
-                fwrite( $request_socket, $request_body );
-                fclose( $request_socket );
-            }else {
-                throw new Exception("Couldn't create socket");
-            }
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+            curl_exec($ch);
+            $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         }catch (Exception $e) {
             // if we don't have success with response, or success with no response - re-queue this message
             $attempt = array_key_exists('attempts', $body) ? $body['attempts']+=1 : 1;
