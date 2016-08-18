@@ -16,7 +16,7 @@ if (file_exists('../../../../../../.env')) {
 $settings = [
     'REDIS_BACKEND'     => getenv('REDIS_HOST').":".getenv('REDIS_PORT'), // Set Redis Backend Info
     'REDIS_BACKEND_DB'  => getenv('REDIS_DB'),  // Use Redis DB 0
-    'COUNT'             => '2',                 // Number of workers
+    'COUNT'             => '1',                 // Number of workers
     'INTERVAL'          => '2',                 // Poll queues every n seconds
     'QUEUE'             => '*',                 // Start workers on all queues
     'PREFIX'            => 'rooftop',           // Prefix queue names with 'rooftop'
