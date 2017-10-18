@@ -169,6 +169,13 @@ class Rooftop_Queue_Pusher {
         $this->loader->add_action( 'wp_update_nav_menu', $plugin_admin, 'trigger_menu_save', 10, 1 );
         $this->loader->add_action( 'wp_delete_nav_menu', $plugin_admin, 'trigger_menu_delete', 10, 1 );
         $this->loader->add_action( 'wp_update_nav_menu_item', $plugin_admin, 'trigger_menu_item_save', 10, 3 );
+
+        $this->loader->add_action( 'created_term', $plugin_admin, 'trigger_created_term', 10, 3);
+        $this->loader->add_action( 'edited_terms', $plugin_admin, 'trigger_edited_terms', 10, 2);
+        $this->loader->add_action( 'pre_delete_term', $plugin_admin, 'trigger_delete_term', 10, 3);
+
+        $this->loader->add_action( 'rooftop/created_taxonomy', $plugin_admin, 'trigger_rooftop_created_taxonomy', 10, 1);
+        $this->loader->add_action( 'rooftop/deleted_taxonomy', $plugin_admin, 'trigger_rooftop_deleted_taxonomy', 10, 1);
 	}
 
 	/**

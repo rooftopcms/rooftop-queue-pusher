@@ -261,6 +261,79 @@ class Rooftop_Queue_Pusher_Admin {
         $this->send_webhook_request( $webhook_request_body );
     }
 
+    function trigger_created_term( $term_id, $tt_id, $taxonomy_slug ) {
+        $term = get_term( $term_id );
+        $webhook_request_body = array(
+            'id' => $term_id,
+            'blog_id' => $this->blog_id,
+            'sub_domain' => $this->sub_domain,
+            'type' => 'term',
+            'taxonomy_slug' => $taxonomy_slug,
+            'term_slug' => $term->slug,
+            'status' => 'created'
+        );
+
+        $this->send_webhook_request( $webhook_request_body );
+    }
+
+    function trigger_edited_terms( $term_id, $taxonomy_slug ) {
+        $term = get_term( $term_id );
+        $webhook_request_body = array(
+            'id' => $term_id,
+            'blog_id' => $this->blog_id,
+            'sub_domain' => $this->sub_domain,
+            'type' => 'term',
+            'taxonomy_slug' => $taxonomy_slug,
+            'term_slug' => $term->slug,
+            'status' => 'updated'
+        );
+
+        $this->send_webhook_request( $webhook_request_body );
+    }
+
+    function trigger_delete_term( $term_id, $tt_id, $taxonomy_slug ) {
+        $term = get_term( $term_id );
+        $webhook_request_body = array(
+            'id' => $term_id,
+            'blog_id' => $this->blog_id,
+            'sub_domain' => $this->sub_domain,
+            'type' => 'term',
+            'taxonomy_slug' => $taxonomy_slug,
+            'term_slug' => $term->slug,
+            'status' => 'deleted'
+        );
+
+        $this->send_webhook_request( $webhook_request_body );
+    }
+
+
+    // this hook is RT specific and triggered by calling do_action('rooftop/created_taxonomy', $id, $slug);
+    function trigger_rooftop_created_taxonomy( $taxonomy_slug ) {
+        $webhook_request_body = array(
+            'id' => $taxonomy_slug,
+            'blog_id' => $this->blog_id,
+            'sub_domain' => $this->sub_domain,
+            'type' => 'taxonomy',
+            'slug' => $taxonomy_slug,
+            'status' => 'created'
+        );
+
+        $this->send_webhook_request( $webhook_request_body );
+    }
+
+    // this hook is RT specific and triggered by calling do_action('rooftop/created_taxonomy', $id, $slug);
+    function trigger_rooftop_deleted_taxonomy( $taxonomy_slug ) {
+        $webhook_request_body = array(
+            'id' => $taxonomy_slug,
+            'blog_id' => $this->blog_id,
+            'sub_domain' => $this->sub_domain,
+            'type' => 'taxonomy',
+            'status' => 'deleted'
+        );
+
+        $this->send_webhook_request( $webhook_request_body );
+    }
+
     /**
      * @param $request_body
      *
